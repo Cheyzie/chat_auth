@@ -1,0 +1,31 @@
+version: '3.7'
+
+services:
+  app:
+    build: ./
+    command: 
+      - /bin/sh
+      - -c
+      - |
+        ./check-out-db.sh db
+        migrate -source file://database/migrations -database postgres://alias_app:qwerty1234@db:5432/alias_app?sslmode=disable up
+        ./app
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    depends_on:
+      - db
+    restart: always
+  db:
+    image: postgres
+    volumes:
+      - sqldata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_DB=${DB_DATABASE}
+    ports:
+      - 5434:5432
+    restart: always
+
+volumes:
+  sqldata:
