@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Cheyzie/chat_auth/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -38,6 +39,14 @@ func (h *Handler) userIdentity(c *gin.Context) {
 		return
 	}
 
+	if _, err := h.authService.FindSession(c.Request.Context(), claims.SessionID); err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			newErrorResponse(c, http.StatusUnauthorized, "invalid token", err)
+			return
+		}
+		newErrorResponse(c, http.StatusInternalServerError, "something went wrong", err)
+		return
+	}
 	c.Set(userCtx, claims.UserId)
 	c.Set(sessionCtx, claims.SessionID)
 }

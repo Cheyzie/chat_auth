@@ -15,6 +15,8 @@ import (
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890"
 
+var ErrNotFound error = errors.New("not found")
+
 type UserRepository interface {
 	Create(user model.User) (uint, error)
 	GetByID(id uint) (model.User, error)
@@ -25,6 +27,7 @@ type UserRepository interface {
 type RefreshTokenRepository interface {
 	Store(ctx context.Context, token *model.RefreshToken) error
 	Get(ctx context.Context, token string) (*model.RefreshToken, error)
+	GetBySessionID(ctx context.Context, id uint) (*model.RefreshToken, error)
 	ListByUserID(ctx context.Context, userID uint) ([]*model.RefreshToken, error)
 	Delete(ctx context.Context, userID, tokenID uint) error
 }
@@ -151,6 +154,16 @@ func (s *AuthorizationService) GetByID(id uint) (model.User, error) {
 	}
 
 	return user, nil
+}
+
+func (s *AuthorizationService) FindSession(ctx context.Context, id uint) (*model.RefreshToken, error) {
+	session, err := s.rtRepo.GetBySessionID(ctx, id)
+
+	if err != nil {
+		return session, fmt.Errorf("get session by id=%d error: %w", id, err)
+	}
+
+	return session, nil
 }
 
 func (s *AuthorizationService) DropSession(userID, sessionID uint) error {
