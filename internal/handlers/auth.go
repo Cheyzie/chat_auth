@@ -109,3 +109,23 @@ func (h *Handler) dropSession(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusNoContent, nil)
 }
+
+func (h *Handler) signOut(ctx *gin.Context) {
+	userID, err := getUserId(ctx)
+	if err != nil {
+		newErrorResponse(ctx, http.StatusUnauthorized, "cant resolve user id", err)
+		return
+	}
+
+	sessionID, err := getSessionId(ctx)
+	if err != nil {
+		newErrorResponse(ctx, http.StatusUnauthorized, "cant resolve session id", err)
+		return
+	}
+
+	if err := h.authService.DropSession(userID, sessionID); err != nil {
+		newErrorResponse(ctx, http.StatusInternalServerError, "cant drop sessions", err)
+		return
+	}
+	ctx.JSON(http.StatusNoContent, nil)
+}

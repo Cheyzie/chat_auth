@@ -31,7 +31,8 @@ type RefreshTokenRepository interface {
 
 type tokenClaims struct {
 	jwt.RegisteredClaims
-	UserId uint
+	UserId    uint
+	SessionID uint
 }
 
 type AuthorizationService struct {
@@ -92,18 +93,6 @@ func randStringBytesRmndr(n int) string {
 
 func (s *AuthorizationService) generateToken(userID uint, sessionName string) (model.Token, error) {
 	ctx := context.Background()
-	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims{
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.token_ttl)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		userID,
-	}).SignedString([]byte(s.signingKey))
-
-	if err != nil {
-		return model.Token{}, err
-	}
-
 	refreshToken := model.RefreshToken{
 		Token:       randStringBytesRmndr(64),
 		UserID:      userID,
@@ -112,6 +101,18 @@ func (s *AuthorizationService) generateToken(userID uint, sessionName string) (m
 	}
 
 	if err := s.rtRepo.Store(ctx, &refreshToken); err != nil {
+		return model.Token{}, err
+	}
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims{
+		jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.token_ttl)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+		userID,
+		refreshToken.ID,
+	}).SignedString([]byte(s.signingKey))
+
+	if err != nil {
 		return model.Token{}, err
 	}
 
@@ -125,7 +126,7 @@ func (s *AuthorizationService) generatePasswordHahs(passwor string) string {
 	return fmt.Sprintf("%x", hash.Sum([]byte(s.salt)))
 }
 
-func (s *AuthorizationService) ParseToken(access_token string) (uint, error) {
+func (s *AuthorizationService) ParseToken(access_token string) (*tokenClaims, error) {
 	token, err := jwt.ParseWithClaims(access_token, &tokenClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid signing method")
@@ -133,13 +134,13 @@ func (s *AuthorizationService) ParseToken(access_token string) (uint, error) {
 		return []byte(s.signingKey), nil
 	})
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	claims, ok := token.Claims.(*tokenClaims)
 	if !ok {
-		return 0, errors.New("token claims not of type *tokenClaims")
+		return nil, errors.New("token claims not of type *tokenClaims")
 	}
-	return claims.UserId, nil
+	return claims, nil
 }
 
 func (s *AuthorizationService) GetByID(id uint) (model.User, error) {

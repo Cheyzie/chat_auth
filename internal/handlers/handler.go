@@ -46,7 +46,8 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		securedRouter.Use(h.userIdentity)
 		securedRouter.GET("/me", h.getMe)
 		securedRouter.GET("/me/sessions", h.userSessions)
-		securedRouter.DELETE("/me/sessions/:id", h.dropSession)
+		securedRouter.DELETE("/sessions/:id", h.dropSession)
+		securedRouter.DELETE("/signout", h.signOut)
 	}
 
 	return router
