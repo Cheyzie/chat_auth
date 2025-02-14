@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Cheyzie/chat_auth/internal/model"
@@ -40,6 +42,25 @@ func (r *RefreshTokenPostgres) Get(ctx context.Context, token string) (*model.Re
 	err := r.db.Get(tokenEntity, query, token)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, service.ErrNotFound
+		}
+		return nil, err
+	}
+
+	return tokenEntity, nil
+}
+
+func (r *RefreshTokenPostgres) GetBySessionID(ctx context.Context, id uint) (*model.RefreshToken, error) {
+	tokenEntity := new(model.RefreshToken)
+
+	query := fmt.Sprintf("SELECT id, token, user_id, session_name, expires_at, created_at FROM %s WHERE id = $1;", refreshTokenTable)
+	err := r.db.Get(tokenEntity, query, id)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, service.ErrNotFound
+		}
 		return nil, err
 	}
 
