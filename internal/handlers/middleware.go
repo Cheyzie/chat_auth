@@ -11,6 +11,7 @@ import (
 const (
 	authorizationHeader = "Authorization"
 	userCtx             = "userId"
+	sessionCtx          = "session"
 )
 
 func (h *Handler) userIdentity(c *gin.Context) {
@@ -31,13 +32,14 @@ func (h *Handler) userIdentity(c *gin.Context) {
 		return
 	}
 
-	userId, err := h.authService.ParseToken(headerParts[1])
+	claims, err := h.authService.ParseToken(headerParts[1])
 	if err != nil {
 		newErrorResponse(c, http.StatusUnauthorized, "invalid token", err)
 		return
 	}
 
-	c.Set(userCtx, userId)
+	c.Set(userCtx, claims.UserId)
+	c.Set(sessionCtx, claims.SessionID)
 }
 
 func getUserId(c *gin.Context) (uint, error) {
@@ -49,6 +51,20 @@ func getUserId(c *gin.Context) (uint, error) {
 	idUint, ok := id.(uint)
 	if !ok {
 		return 0, errors.New("user id is of invalid type")
+	}
+
+	return idUint, nil
+}
+
+func getSessionId(c *gin.Context) (uint, error) {
+	id, ok := c.Get(sessionCtx)
+	if !ok {
+		return 0, errors.New("session id not found")
+	}
+
+	idUint, ok := id.(uint)
+	if !ok {
+		return 0, errors.New("session id is of invalid type")
 	}
 
 	return idUint, nil
