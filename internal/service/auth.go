@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/sha1"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -42,7 +45,8 @@ type AuthorizationService struct {
 	repo       UserRepository
 	rtRepo     RefreshTokenRepository
 	salt       string
-	signingKey string
+	privateKey string
+	publicKey  string
 	token_ttl  time.Duration
 }
 
@@ -51,8 +55,9 @@ func NewAuthorizationService(repo UserRepository, rtRepo RefreshTokenRepository)
 		repo:       repo,
 		rtRepo:     rtRepo,
 		salt:       os.Getenv("HASH_SALT"),
-		signingKey: os.Getenv("JWT_SIGNING_KEY"),
-		token_ttl:  2 * time.Minute,
+		privateKey: os.Getenv("JWT_PRIVATE_KEY"),
+		publicKey:  os.Getenv("JWT_PUBLIC_KEY"),
+		token_ttl:  5 * time.Minute,
 	}
 }
 
@@ -106,14 +111,27 @@ func (s *AuthorizationService) generateToken(userID uint, sessionName string) (m
 	if err := s.rtRepo.Store(ctx, &refreshToken); err != nil {
 		return model.Token{}, err
 	}
-	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims{
+
+	blockPriv, _ := pem.Decode([]byte(s.privateKey))
+	if blockPriv == nil {
+		return model.Token{}, errors.New("cant parse private token")
+	}
+
+	x509EncodedPriv := blockPriv.Bytes
+
+	privateKey, err := x509.ParseECPrivateKey(x509EncodedPriv)
+	if err != nil {
+		return model.Token{}, err
+	}
+
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, tokenClaims{
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.token_ttl)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 		userID,
 		refreshToken.ID,
-	}).SignedString([]byte(s.signingKey))
+	}).SignedString(privateKey)
 
 	if err != nil {
 		return model.Token{}, err
@@ -130,11 +148,22 @@ func (s *AuthorizationService) generatePasswordHahs(passwor string) string {
 }
 
 func (s *AuthorizationService) ParseToken(access_token string) (*tokenClaims, error) {
+	blockPub, _ := pem.Decode([]byte(s.publicKey))
+	if blockPub == nil {
+		return nil, errors.New("cant parse public token")
+	}
+	x509EncodedPub := blockPub.Bytes
+
+	genericPublicKey, err := x509.ParsePKIXPublicKey(x509EncodedPub)
+	if err != nil {
+		return nil, err
+	}
+	publicKey := genericPublicKey.(*ecdsa.PublicKey)
 	token, err := jwt.ParseWithClaims(access_token, &tokenClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if _, ok := t.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, errors.New("invalid signing method")
 		}
-		return []byte(s.signingKey), nil
+		return publicKey, nil
 	})
 	if err != nil {
 		return nil, err
