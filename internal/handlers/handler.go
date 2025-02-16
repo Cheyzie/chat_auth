@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/Cheyzie/chat_auth/internal/model"
 	"github.com/Cheyzie/chat_auth/internal/service"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -22,16 +20,16 @@ func NewHandler(authService *service.AuthorizationService) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.Default()
 
-	router.Use(
-		cors.New(cors.Config{
-			AllowAllOrigins:        true,
-			AllowMethods:           []string{"GET", "POST", "PUT", "DELETE"},
-			AllowHeaders:           []string{"ORIGIN", "Authorization", "Content-Type"},
-			AllowCredentials:       true,
-			AllowBrowserExtensions: true,
-			MaxAge:                 300 * time.Second,
-		}),
-	)
+	// router.Use(
+	// 	cors.New(cors.Config{
+	// 		AllowAllOrigins:        true,
+	// 		AllowMethods:           []string{"GET", "POST", "PUT", "DELETE"},
+	// 		AllowHeaders:           []string{"ORIGIN", "Authorization", "Content-Type"},
+	// 		AllowCredentials:       true,
+	// 		AllowBrowserExtensions: true,
+	// 		MaxAge:                 300 * time.Second,
+	// 	}),
+	// )
 	router.GET("/", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{
 			"message": "hello world",
