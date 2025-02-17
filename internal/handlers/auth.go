@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/Cheyzie/chat_auth/internal/model"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func (h *Handler) signIn(ctx *gin.Context) {
@@ -97,13 +97,13 @@ func (h *Handler) dropSession(ctx *gin.Context) {
 		return
 	}
 
-	sessionID, err := strconv.Atoi(ctx.Param("id"))
+	sessionID, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
 		newErrorResponse(ctx, http.StatusBadRequest, "cant parse session id", err)
 		return
 	}
 
-	if err := h.authService.DropSession(userID, uint(sessionID)); err != nil {
+	if err := h.authService.DropSession(userID, sessionID); err != nil {
 		newErrorResponse(ctx, http.StatusInternalServerError, "cant drop sessions", err)
 		return
 	}
