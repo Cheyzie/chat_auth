@@ -7,6 +7,7 @@ import (
 
 	"github.com/Cheyzie/chat_auth/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const (
@@ -51,30 +52,30 @@ func (h *Handler) userIdentity(c *gin.Context) {
 	c.Set(sessionCtx, claims.SessionID)
 }
 
-func getUserId(c *gin.Context) (uint, error) {
+func getUserId(c *gin.Context) (uuid.UUID, error) {
 	id, ok := c.Get(userCtx)
 	if !ok {
-		return 0, errors.New("user id not found")
+		return uuid.Nil, errors.New("user id not found")
 	}
 
-	idUint, ok := id.(uint)
+	idUUID, ok := id.(uuid.UUID)
 	if !ok {
-		return 0, errors.New("user id is of invalid type")
+		return uuid.Nil, errors.New("user id is of invalid type")
 	}
 
-	return idUint, nil
+	return idUUID, nil
 }
 
-func getSessionId(c *gin.Context) (uint, error) {
+func getSessionId(c *gin.Context) (uuid.UUID, error) {
 	id, ok := c.Get(sessionCtx)
 	if !ok {
-		return 0, errors.New("session id not found")
+		return uuid.Nil, errors.New("session id not found")
 	}
 
-	idUint, ok := id.(uint)
+	idUUID, ok := id.(uuid.UUID)
 	if !ok {
-		return 0, errors.New("session id is of invalid type")
+		return uuid.Nil, errors.New("session id is of invalid type")
 	}
 
-	return idUint, nil
+	return idUUID, nil
 }
